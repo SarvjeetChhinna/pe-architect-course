@@ -4,3 +4,5 @@ metadata:
   name: good-ns
   labels:
     "admission": "true"
+
+

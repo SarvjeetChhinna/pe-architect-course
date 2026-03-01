@@ -21,7 +21,8 @@ export class TeamFormComponent {
     private teamsService: TeamsService
   ) {
     this.teamForm = this.fb.group({
-      name: ['', [Validators.required, Validators.minLength(2)]]
+      name: ['', [Validators.required, Validators.minLength(2)]],
+      environment: ['development', [Validators.required]]
     });
   }
 
@@ -31,12 +32,18 @@ export class TeamFormComponent {
       this.errorMessage = '';
       
       const teamData: TeamCreate = {
-        name: this.teamForm.value.name.trim()
+        name: this.teamForm.value.name.trim(),
+        labels: {
+          environment: String(this.teamForm.value.environment).trim()
+        }
       };
 
       this.teamsService.createTeam(teamData).subscribe({
         next: () => {
-          this.teamForm.reset();
+          this.teamForm.reset({
+            name: '',
+            environment: 'development'
+          });
           this.teamCreated.emit();
           this.isSubmitting = false;
         },
@@ -50,5 +57,9 @@ export class TeamFormComponent {
 
   get name() {
     return this.teamForm.get('name');
+  }
+
+  get environment() {
+    return this.teamForm.get('environment');
   }
 }

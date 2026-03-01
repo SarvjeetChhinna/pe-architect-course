@@ -16,6 +16,22 @@
     </div>
   </div>
 
+  <div class="form-group">
+    <label for="environment">Environment</label>
+    <select
+      id="environment"
+      formControlName="environment"
+      class="form-control"
+      [class.invalid]="environment?.invalid && environment?.touched"
+    >
+      <option value="development">development</option>
+      <option value="production">production</option>
+    </select>
+    <div class="error-message" *ngIf="environment?.invalid && environment?.touched">
+      <span *ngIf="environment?.errors?.['required']">Environment is required</span>
+    </div>
+  </div>
+
   <div class="error-message" *ngIf="errorMessage">
     {{ errorMessage }}
   </div>

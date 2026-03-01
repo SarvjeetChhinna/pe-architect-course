@@ -26,7 +26,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: teams-api
-        image: olivercodes01/teams-api:0.0.2
+        image: ghcr.io/sarvjeetchhinna/pe-platform-capstone/teams-api:v0.1.2
         ports:
         - containerPort: 8000
         env:

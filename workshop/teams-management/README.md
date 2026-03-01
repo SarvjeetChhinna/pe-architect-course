@@ -332,7 +332,7 @@ kubectl describe pod <pod-name> -n <namespace>
 kubectl top nodes
 
 # Verify images are accessible
-docker pull olivercodes01/teams-api:latest
+docker pull ghcr.io/SarvjeetChhinna/pe-platform-capstone/teams-api:demo
 ```
 
 ### Component-Specific Troubleshooting

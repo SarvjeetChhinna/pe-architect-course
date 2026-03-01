@@ -71,8 +71,8 @@ kubectl apply -f deployment.yaml
 ```
 
 **Container Images Available**:
-- **Docker Hub**: `olivercodes01/teams-api:0.0.2`
-- **Registry**: https://hub.docker.com/u/olivercodes01
+- **GHCR**: `ghcr.io/SarvjeetChhinna/pe-platform-capstone/teams-api:demo`
+- **Registry**: https://github.com/SarvjeetChhinna/pe-platform-capstone/pkgs/container/teams-api
 
 ### Option 2: Local Development Setup
 
@@ -349,7 +349,7 @@ kubectl top nodes
 **Solutions**:
 ```bash
 # If image pull issues, verify image exists
-docker pull olivercodes01/teams-api:latest
+docker pull ghcr.io/SarvjeetChhinna/pe-platform-capstone/teams-api:demo
 
 # If resource issues, check cluster capacity
 kubectl describe nodes

@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rollouts-demo
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: demo-rollout
+  namespace: rollouts-demo
+spec:
+  replicas: 2
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: demo
+  template:
+    metadata:
+      labels:
+        app: demo
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.27-alpine
+        ports:
+        - containerPort: 80
+  strategy:
+    canary:
+      stableService: demo-svc-stable
+      canaryService: demo-svc-canary
+      steps:
+      - setWeight: 50
+      - pause:
+          duration: 10
+      - setWeight: 100
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-svc-canary
+  namespace: rollouts-demo
+spec:
+  selector:
+    app: demo
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-svc-stable
+  namespace: rollouts-demo
+spec:
+  selector:
+    app: demo
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80

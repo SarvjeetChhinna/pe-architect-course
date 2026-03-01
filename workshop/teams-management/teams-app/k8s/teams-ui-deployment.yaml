@@ -1,6 +1,6 @@
 # k8s/teams-ui-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: teams-ui
   namespace: engineering-platform
@@ -11,6 +11,7 @@ metadata:
     commit-sha: 8b514a1cb354
 spec:
   replicas: 3
+  revisionHistoryLimit: 2
   selector:
     matchLabels:
       app: teams-ui
@@ -47,3 +48,12 @@ spec:
             port: 80
           initialDelaySeconds: 5
           periodSeconds: 5
+  strategy:
+    canary:
+      stableService: teams-ui-service
+      canaryService: teams-ui-canary-service
+      steps:
+      - setWeight: 50
+      - pause:
+          duration: 10
+      - setWeight: 100

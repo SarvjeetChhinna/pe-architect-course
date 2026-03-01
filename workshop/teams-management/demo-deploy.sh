@@ -28,6 +28,12 @@ wait_for_deploy() {
   kubectl wait --for=condition=available --timeout=300s "deployment/${name}" -n "${ns}"
 }
 
+wait_for_rollout() {
+  local ns="$1"
+  local name="$2"
+  kubectl wait --for=condition=Healthy --timeout=300s "rollout/${name}" -n "${ns}"
+}
+
 port_forward() {
   require_cmd kubectl
 
@@ -59,13 +65,18 @@ deploy() {
   log "Deploying Teams demo environment..."
 
   kubectl apply -f "${KEYCLOAK_MANIFEST}"
+  kubectl delete deployment/teams-ui -n "${NAMESPACE_PLATFORM}" --ignore-not-found
   kubectl apply -f "${TEAMS_APP_MANIFEST_DIR}"
   kubectl apply -f "${OPERATOR_MANIFEST}"
 
   log "Waiting for deployments to become ready..."
   wait_for_deploy "${NAMESPACE_KEYCLOAK}" "keycloak"
   wait_for_deploy "${NAMESPACE_PLATFORM}" "teams-api"
-  wait_for_deploy "${NAMESPACE_PLATFORM}" "teams-ui"
+  if kubectl get rollout/teams-ui -n "${NAMESPACE_PLATFORM}" >/dev/null 2>&1; then
+    wait_for_rollout "${NAMESPACE_PLATFORM}" "teams-ui"
+  else
+    wait_for_deploy "${NAMESPACE_PLATFORM}" "teams-ui"
+  fi
   wait_for_deploy "${NAMESPACE_PLATFORM}" "teams-operator"
 
   log ""

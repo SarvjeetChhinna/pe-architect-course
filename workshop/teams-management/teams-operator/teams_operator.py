@@ -8,7 +8,7 @@ import json
 import logging
 import os
 import time
-from typing import Set, Dict, Any
+from typing import Set, Dict, Any, Optional
 import aiohttp
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
@@ -76,24 +76,79 @@ class TeamsOperator:
         except Exception as e:
             logger.error(f"Unexpected error fetching teams: {e}")
             return []
+
+    def create_resource_quota(self, namespace_name: str, team_id: str, team_name: str, extra_labels: Optional[Dict[str, str]] = None, extra_annotations: Optional[Dict[str, str]] = None) -> bool:
+        """Create a default ResourceQuota inside the team namespace"""
+        try:
+            extra_labels = extra_labels or {}
+            extra_annotations = extra_annotations or {}
+
+            rq_body = client.V1ResourceQuota(
+                metadata=client.V1ObjectMeta(
+                    name="team-quota",
+                    namespace=namespace_name,
+                    labels={
+                        "app.kubernetes.io/managed-by": "teams-operator",
+                        "teams.example.com/team-id": team_id,
+                        "teams.example.com/team-name": team_name.replace(" ", "-").lower(),
+                        **extra_labels,
+                    },
+                    annotations={
+                        "teams.example.com/created-by": "teams-operator",
+                        "teams.example.com/team-id": team_id,
+                        **extra_annotations,
+                    },
+                ),
+                spec=client.V1ResourceQuotaSpec(
+                    hard={
+                        "pods": "10",
+                        "requests.cpu": "1",
+                        "requests.memory": "1Gi",
+                        "limits.cpu": "2",
+                        "limits.memory": "2Gi",
+                    }
+                ),
+            )
+
+            self.k8s_core_v1.create_namespaced_resource_quota(namespace=namespace_name, body=rq_body)
+            logger.info(f"📦 Created ResourceQuota 'team-quota' in namespace '{namespace_name}'")
+            return True
+        except ApiException as e:
+            if e.status == 409:
+                logger.warning(f"⚠️ ResourceQuota 'team-quota' already exists in namespace '{namespace_name}'")
+                return True
+            logger.error(f"❌ Failed to create ResourceQuota in namespace '{namespace_name}': {e}")
+            return False
+        except Exception as e:
+            logger.error(f"❌ Unexpected error creating ResourceQuota: {e}")
+            return False
     
-    def create_namespace(self, team_id: str, team_name: str, namespace_name: str) -> bool:
+    def create_namespace(self, team_id: str, team_name: str, namespace_name: str, extra_labels: Optional[Dict[str, str]] = None, extra_annotations: Optional[Dict[str, str]] = None) -> bool:
         """Create a Kubernetes namespace for the team"""
         try:
+            extra_labels = extra_labels or {}
+            extra_annotations = extra_annotations or {}
+
+            namespace_labels = {
+                "app.kubernetes.io/managed-by": "teams-operator",
+                "teams.example.com/team-id": team_id,
+                "teams.example.com/team-name": team_name.replace(" ", "-").lower(),
+                **extra_labels,
+            }
+
+            namespace_annotations = {
+                "teams.example.com/original-team-name": team_name,
+                "teams.example.com/created-by": "teams-operator",
+                "teams.example.com/team-id": team_id,
+                **extra_annotations,
+            }
+
             # Define namespace metadata
             namespace_body = client.V1Namespace(
                 metadata=client.V1ObjectMeta(
                     name=namespace_name,
-                    labels={
-                        "app.kubernetes.io/managed-by": "teams-operator",
-                        "teams.example.com/team-id": team_id,
-                        "teams.example.com/team-name": team_name.replace(" ", "-").lower()
-                    },
-                    annotations={
-                        "teams.example.com/original-team-name": team_name,
-                        "teams.example.com/created-by": "teams-operator",
-                        "teams.example.com/team-id": team_id
-                    }
+                    labels=namespace_labels,
+                    annotations=namespace_annotations,
                 )
             )
             
@@ -141,9 +196,13 @@ class TeamsOperator:
         for team_id in new_teams:
             team = current_teams[team_id]
             team_name = team['name']
-            namespace_name = self.sanitize_namespace_name(team_name)
+            namespace_name = team.get('namespace') or self.sanitize_namespace_name(team_name)
+
+            extra_labels = team.get('labels') if isinstance(team.get('labels'), dict) else {}
+            extra_annotations = team.get('annotations') if isinstance(team.get('annotations'), dict) else {}
             
-            if self.create_namespace(team_id, team_name, namespace_name):
+            if self.create_namespace(team_id, team_name, namespace_name, extra_labels=extra_labels, extra_annotations=extra_annotations):
+                self.create_resource_quota(namespace_name, team_id, team_name, extra_labels=extra_labels, extra_annotations=extra_annotations)
                 self.team_namespaces[team_id] = namespace_name
         
         # Handle deleted teams (remove namespaces)
